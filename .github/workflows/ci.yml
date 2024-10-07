@@ -1,8 +1,3 @@
-# Copyright (C) 2024 Toitware ApS.
-#
-# Use of this source code is governed by a BSD0-style license that can be
-# found in the LICENSE file.
-
 name: Build
 
 on:
@@ -10,11 +5,7 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -25,28 +16,12 @@ jobs:
         uses: ./toit/actions/setup-build
         with:
           toit-dir: toit
-          esp32: true
+          esp32: true # Install build tools for ESP32
 
       - shell: bash
         run: echo $PATH
 
-      - name: Build - Linux and macOS
-        if: runner.os != 'Windows'
+      - name: Build
         shell: bash
         run: |
-          make init  # Can be removed once the project is set up.
           make
-
-      - name: Build - Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          make init  # Can be removed once the project is set up.
-          ${{ github.workspace }}/toit/third_party/esp-idf/export.ps1
-          make host
-          cmake -E env `
-               "IDF_PATH=$PWD/toit/third_party/esp-idf" `
-               "IDF_TARGET=esp32" "IDF_CCACHE_ENABLE=1" `
-               "TOIT_EXTRA_COMPONENTS=$PWD/components" `
-               "TOIT_SDK_DIR=$PWD/build/host/sdk" `
-               python $PWD/toit/third_party/esp-idf/tools/idf.py -B "$PWD/build/esp32" -C build-root build
