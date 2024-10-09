@@ -55,6 +55,22 @@ checked into your repository.
 jag flash build/esp32c3/firmware.envelope
 ```
 
+## Adding container
+
+You can add a container to an envelope...
+
+Something like..
+
+```sh
+# Copy the envelope to a new file for modificaiton
+cp ./build/host/firmware.envelope ./build/esp32c-noconsole-container.envelope
+# Build out container
+./build/host/sdk/bin/toit compile --snapshot -o lightbug.snapshot ./../toit/src/run.toit
+# Add container to envelope
+./build/host/sdk/bin/toit tool firmware -e ./build/esp32c-noconsole-container.envelope container install lightbug lightbug.snapshot
+```
+
+
 ## Makefile targets
 - `make` or `make all` - Build the envelope.
 - `make init` - Initialize after cloning. See the Setup section above.
