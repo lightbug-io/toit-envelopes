@@ -8,7 +8,7 @@ SHELL := bash
 
 # Change to your configuration. See toit/toolchains for the available targets.
 # Then run 'make init'.
-IDF_TARGET := esp32
+IDF_TARGET ?= esp32
 
 # Set to false to avoid initializing submodules at every build.
 INITIALIZE_SUBMODULES := true
@@ -52,11 +52,42 @@ build-host: host
 
 .PHONY: esp32
 esp32: initialize-submodules
+	@$(MAKE) idf-prepare
+
+	@if [ -f $(BUILD_ROOT)/sdkconfig ]; then \
+		current_target=$$(grep -E "^CONFIG_IDF_TARGET_" $(BUILD_ROOT)/sdkconfig | sed -n 's/CONFIG_IDF_TARGET_\([^=]*\)=y/\1/p' | tr '[:upper:]' '[:lower:]' || true); \
+		if [ -n "$$current_target" ] && [ "$$current_target" != "$(IDF_TARGET)" ]; then \
+			echo "Existing sdkconfig is for target '$$current_target' but IDF_TARGET is '$(IDF_TARGET)'. Removing stale sdkconfig so a fresh one will be created."; \
+			rm -f $(BUILD_ROOT)/sdkconfig; \
+		fi; \
+	fi
 	@if [[ ! -f $(BUILD_ROOT)/sdkconfig.defaults ]]; then \
 	  echo "Run 'make init' first"; \
 		exit 1; \
 	fi
 	@$(call toit-make,esp32)
+
+.PHONY: idf-prepare
+idf-prepare:
+	@echo "Preparing ESP-IDF for target '$(IDF_TARGET)'"
+	@echo "Checking ESP-IDF installation for target '$(IDF_TARGET)' (python env + toolchain)"
+	@python_env_installed=false; \
+	if ls "$$HOME/.espressif/python_env"/idf* >/dev/null 2>&1; then python_env_installed=true; fi; \
+	toolchain_installed=false; \
+	if [ -d "$$HOME/.espressif/tools" ] && [ -n "$$(ls -A "$$HOME/.espressif/tools" 2>/dev/null)" ]; then \
+		if [ -d "$$HOME/.espressif/tools/xtensa-esp-elf" ] || [ -d "$$HOME/.espressif/tools/riscv32-esp-elf" ]; then \
+			toolchain_installed=true; \
+		fi; \
+	fi; \
+	if [ "$$python_env_installed" = true ] && [ "$$toolchain_installed" = true ]; then \
+		echo "ESP-IDF appears installed (python env + toolchain present); skipping install.sh"; \
+	else \
+		echo "Installing ESP-IDF tools for target '$(IDF_TARGET)' (this may take a while)"; \
+		( cd "$(IDF_PATH)" && ./install.sh $(IDF_TARGET) ) || true; \
+	fi
+
+	@echo "Setting ESP-IDF target to '$(IDF_TARGET)'"
+	@bash -lc 'if [ -f "$(IDF_PATH)/export.sh" ]; then . "$(IDF_PATH)/export.sh"; fi; cd "$(BUILD_ROOT)" && "$(IDF_PY)" set-target $(IDF_TARGET)' || true
 
 .PHONY: menuconfig
 menuconfig: initialize-submodules
