@@ -59,7 +59,7 @@ on a GitHub runner. You can use this as a reference for setting up your own envi
   ```
 
 * Change the license to your license.
-* Change the `TARGET` variable in the Makefile to the name of your chip. By default it is set to `esp32`.
+* Change the `IDF_TARGET` variable in the Makefile to the name of your chip.
 * Run `make init`. This will copy some of the Toit files, depending on the target, to your repository.
 
 After initialization you should have the files `sdkconfig.defaults` and `partitions.csv` in the `build-root`
@@ -73,11 +73,32 @@ checked into your repository.
   to compile on Windows or macOS.
 
 ### Build
-* Run `make` to build the envelope. It should end up with a `build/esp32/firmware.envelope`.
+This repository is set up to build multiple envelope variants.
+
+* Build one envelope variant:
+
+  ``` shell
+  make init
+  make envelope VARIANT=esp32c6-standard
+  ```
+
+  The resulting envelope is written to `dist/esp32c6-standard.envelope`.
+
+* Build all variants:
+
+  ``` shell
+  make init
+  make envelopes
+  ```
+
+  All resulting envelopes are written to `dist/*.envelope`.
 
 ## Makefile targets
-- `make` or `make all` - Build the envelope.
+- `make` or `make all` - Build the default envelope variant.
 - `make init` - Initialize after cloning. See the Setup section above.
 - `make menuconfig` - Runs the ESP-IDF menuconfig tool in the build-root. Also creates the `sdkconfig.defaults` file.
 - `make diff` - Show the differences between your configuration (sdkconfig and partitions.csv) and the default Toit configuration.
 - `make clean` - Remove all build artifacts.
+- `make envelope VARIANT=<name>` - Build one variant and write `dist/<name>.envelope`.
+- `make envelopes` - Build all variants.
+- `make list-variants` - Print the known variants.

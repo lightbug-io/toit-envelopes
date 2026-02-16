@@ -1,3 +1,31 @@
 .packages/
 /build/
+/dist/
+/build-root/sdkconfig
 /build-root/sdkconfig.old
+
+# Editor / IDE
+.vscode/
+*.swp
+.DS_Store
+
+# Build artifacts
+build-root/build/
+build/
+*.o
+*.elf
+*.bin
+*.map
+
+# Generated config / board files
+build-root/partitions.csv
+build-root/sdkconfig.defaults
+*.config
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment / secrets
+.env
+

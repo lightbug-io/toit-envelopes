@@ -8,7 +8,11 @@ SHELL := bash
 
 # Change to your configuration. See toit/toolchains for the available targets.
 # Then run 'make init'.
-IDF_TARGET := esp32
+IDF_TARGET := esp32c6
+
+# Envelope variants.
+VARIANT ?= esp32c6-standard
+VARIANTS ?= esp32c6-standard esp32c6-large-partitions esp32c6-single-ota
 
 # Set to false to avoid initializing submodules at every build.
 INITIALIZE_SUBMODULES := true
@@ -19,11 +23,12 @@ COMPONENTS := $(SOURCE_DIR)/components
 # Constants that typically don't need to be changed.
 BUILD_ROOT := $(SOURCE_DIR)/build-root
 BUILD_PATH := $(SOURCE_DIR)/build
+DIST_DIR := $(SOURCE_DIR)/dist
 TOIT_ROOT := $(SOURCE_DIR)/toit
 IDF_PATH := $(TOIT_ROOT)/third_party/esp-idf
 IDF_PY := $(IDF_PATH)/tools/idf.py
 
-all: esp32
+all: envelope
 
 define toit-make
 	@$(MAKE) -C "$(BUILD_ROOT)" \
@@ -52,11 +57,49 @@ build-host: host
 
 .PHONY: esp32
 esp32: initialize-submodules
-	@if [[ ! -f $(BUILD_ROOT)/sdkconfig.defaults ]]; then \
+	@$(MAKE) envelope VARIANT=$(VARIANT)
+
+.PHONY: list-variants
+list-variants:
+	@printf "%s\n" $(VARIANTS)
+
+.PHONY: envelope
+envelope: initialize-submodules
+	@if [[ ! -f "$(BUILD_ROOT)/sdkconfig.defaults" || ! -f "$(BUILD_ROOT)/partitions.csv" ]]; then \
 	  echo "Run 'make init' first"; \
-		exit 1; \
+	  exit 1; \
 	fi
-	@$(call toit-make,esp32)
+	@if [[ ! -f "$(SOURCE_DIR)/variants/$(VARIANT)/partitions.csv" ]]; then \
+	  echo "Unknown VARIANT: $(VARIANT)"; \
+	  echo "Known variants:"; \
+	  $(MAKE) list-variants; \
+	  exit 1; \
+	fi
+	@mkdir -p "$(DIST_DIR)"
+	@tmp_part=$$(mktemp); \
+	  cp "$(BUILD_ROOT)/partitions.csv" "$$tmp_part"; \
+	  cp "$(SOURCE_DIR)/variants/$(VARIANT)/partitions.csv" "$(BUILD_ROOT)/partitions.csv"; \
+	  $(MAKE) -C "$(BUILD_ROOT)" \
+	    COMPONENTS=$(COMPONENTS) \
+	    BUILD_PATH=$(BUILD_PATH)/variants/$(VARIANT) \
+	    BASE_BUILD_PATH=$(BUILD_PATH) \
+	    TOIT_ROOT=$(TOIT_ROOT) \
+	    IDF_TARGET=$(IDF_TARGET) \
+	    IDF_PATH=$(IDF_PATH) \
+	    IDF_PY=$(IDF_PY) \
+	    esp32; \
+	  status=$$?; \
+	  if [[ $$status -eq 0 ]]; then \
+	    cp "$(BUILD_PATH)/variants/$(VARIANT)/$(IDF_TARGET)/firmware.envelope" "$(DIST_DIR)/$(VARIANT).envelope"; \
+	  fi; \
+	  mv "$$tmp_part" "$(BUILD_ROOT)/partitions.csv"; \
+	  exit $$status
+
+.PHONY: envelopes
+envelopes: initialize-submodules
+	@for v in $(VARIANTS); do \
+	  $(MAKE) envelope VARIANT=$$v; \
+	done
 
 .PHONY: menuconfig
 menuconfig: initialize-submodules
