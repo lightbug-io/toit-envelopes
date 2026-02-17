@@ -10,6 +10,8 @@ on:
 
 jobs:
   build:
+    permissions:
+      contents: write
     strategy:
       matrix:
         variant:
@@ -39,5 +41,12 @@ jobs:
       - name: Upload envelope artifact
         uses: actions/upload-artifact@v4
         with:
-          name: envelope-${{ matrix.variant }}
+          name: envelope-${{ matrix.variant }}.envelope
           path: dist/${{ matrix.variant }}.envelope
+
+      - name: Publish GitHub release asset
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/${{ matrix.variant }}.envelope
