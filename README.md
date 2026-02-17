@@ -1,14 +1,14 @@
-# Template repository for creating a custom Toit envelope
+# Lightbug custom Toit envelopes
 
-This repository can be used to create custom [envelopes](https://docs.toit.io/tutorials/containers)
-for [Toit](https://toitlang.org/).
+This repository creates custom [envelopes](https://docs.toit.io/tutorials/containers)
+for [Toit](https://toitlang.org/) use with Lightbug devices, and is based on [this template repository](https://github.com/toitlang/template-custom-envelope).
 
-There are already many [pre-built envelopes](https://github.com/toitlang/envelopes) available, but
-if you need to create a custom envelope, this repository can be used as a starting point.
+## Releases
 
-## External services
+You can find released envelopes under the Github releases page: https://github.com/lightbug-io/toit-envelopes/releases
 
-See the [README-external-service.md](README-external-service.md) file for information on how to use external services.
+Tags should have the format "v2.0.0-alpha.189.lb.yyymmdd".
+In the case that multiple releases are made on the same day, the "yyyymmdd" part can be extended with a suffix, e.g. "yyyymmdd-1", "yyyymmdd-2", etc.
 
 ## Setup
 
@@ -18,8 +18,9 @@ See the [README-external-service.md](README-external-service.md) file for inform
   - https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html
   - A good starting point is to run `install.sh` from the `toit/third_party/esp-idf` folder.
 
-The [ci.yml](.github/workflows/ci.yml) file uses Toit's setup action to install all prerequisites
-on a GitHub runner. You can use this as a reference for setting up your own environment.
+The [ci.yml](.github/workflows/ci.yml) file uses Toit's setup action to install all prerequisites on a GitHub runner.
+
+This CI action will build artifacts on every push, as well as create release artifacts on every tag.
 
 ### Initial setup
 
