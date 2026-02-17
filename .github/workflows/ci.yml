@@ -10,11 +10,16 @@ on:
 
 jobs:
   build:
+    permissions:
+      contents: write
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        variant:
+          - esp32c6-standard
+          - esp32c6-large-partitions
+          - esp32c6-single-ota
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -27,26 +32,21 @@ jobs:
           toit-dir: toit
           esp32: true
 
-      - shell: bash
-        run: echo $PATH
-
-      - name: Build - Linux and macOS
-        if: runner.os != 'Windows'
+      - name: Build envelope
         shell: bash
         run: |
-          make init  # Can be removed once the project is set up.
-          make
+          make init
+          make envelope VARIANT=${{ matrix.variant }}
 
-      - name: Build - Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          make init  # Can be removed once the project is set up.
-          ${{ github.workspace }}/toit/third_party/esp-idf/export.ps1
-          make host
-          cmake -E env `
-               "IDF_PATH=$PWD/toit/third_party/esp-idf" `
-               "IDF_TARGET=esp32" "IDF_CCACHE_ENABLE=1" `
-               "TOIT_EXTRA_COMPONENTS=$PWD/components" `
-               "TOIT_SDK_DIR=$PWD/build/host/sdk" `
-               python $PWD/toit/third_party/esp-idf/tools/idf.py -B "$PWD/build/esp32" -C build-root build
+      - name: Upload envelope artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: envelope-${{ matrix.variant }}.envelope
+          path: dist/${{ matrix.variant }}.envelope
+
+      - name: Publish GitHub release asset
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/${{ matrix.variant }}.envelope

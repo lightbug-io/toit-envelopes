@@ -11,6 +11,7 @@ SHELL := bash
 IDF_TARGET :=
 COMPONENTS :=
 BUILD_PATH :=
+BASE_BUILD_PATH :=
 TOIT_ROOT :=
 IDF_PATH :=
 IDF_PY :=
@@ -22,8 +23,9 @@ ifndef IDF_TARGET
 $(error IDF_TARGET is not set)
 endif
 
+BASE_BUILD_PATH ?= $(BUILD_PATH)
 IDF_BUILD_PATH := $(BUILD_PATH)/$(IDF_TARGET)
-HOST_BUILD_PATH := $(BUILD_PATH)/host
+HOST_BUILD_PATH := $(BASE_BUILD_PATH)/host
 SDK_PATH := $(HOST_BUILD_PATH)/sdk
 
 ifeq ($(OS),Windows_NT)
@@ -79,7 +81,7 @@ build-host:
 	@# Note that the 'host' is automatically added.
 	@cmake -E env \
 		"EXTERNAL_TOIT_LIB_DIRS=$(COMPONENTS)" \
-		$(MAKE) -C "$(TOIT_ROOT)" BUILD=$(BUILD_PATH)
+		$(MAKE) -C "$(TOIT_ROOT)" BUILD=$(BASE_BUILD_PATH)
 
 $(SDK_PATH)/bin/toit$(EXE_SUFFIX): build-host
 
