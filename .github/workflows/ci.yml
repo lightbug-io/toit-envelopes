@@ -10,7 +10,6 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.variant }} / Toit ${{ matrix.toit.label }}
     permissions:
       contents: write
     strategy:
@@ -20,11 +19,6 @@ jobs:
           - esp32c6-large-partitions
           - esp32c6-single-ota
           - esp32s3-no-spram
-        toit:
-          - ref: v2.0.0-alpha.189
-            label: 189
-          - ref: v2.0.0-alpha.190
-            label: 190
 
     runs-on: ubuntu-latest
 
@@ -42,19 +36,18 @@ jobs:
       - name: Build envelope
         shell: bash
         run: |
-          make init TOIT_REF=${{ matrix.toit.ref }}
-          make envelope VARIANT=${{ matrix.variant }} TOIT_REF=${{ matrix.toit.ref }}
-          cp dist/${{ matrix.variant }}.envelope dist/${{ matrix.variant }}-toit-${{ matrix.toit.label }}.envelope
+          make init
+          make envelope VARIANT=${{ matrix.variant }}
 
       - name: Upload envelope artifact
         uses: actions/upload-artifact@v4
         with:
-          name: envelope-${{ matrix.variant }}-toit-${{ matrix.toit.label }}.envelope
-          path: dist/${{ matrix.variant }}-toit-${{ matrix.toit.label }}.envelope
+          name: envelope-${{ matrix.variant }}.envelope
+          path: dist/${{ matrix.variant }}.envelope
 
       - name: Publish GitHub release asset
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/${{ matrix.variant }}-toit-${{ matrix.toit.label }}.envelope
+            dist/${{ matrix.variant }}.envelope

@@ -7,12 +7,8 @@ for [Toit](https://toitlang.org/) use with Lightbug devices, and is based on [th
 
 You can find released envelopes under the Github releases page: https://github.com/lightbug-io/toit-envelopes/releases
 
-Tags should be release-centric (not Toit-version-centric), for example:
-
-* `lb.YYYYMMDD-HHMM`
-* `lb.YYYYMMDD-1` (if you prefer daily numbering)
-
-Each release asset name includes both the variant and the Toit version label.
+Tags should have the format "v2.0.0-alpha.189.lb.yyymmdd".
+In the case that multiple releases are made on the same day, the "yyyymmdd" part can be extended with a suffix, e.g. "yyyymmdd-1", "yyyymmdd-2", etc.
 
 ## Setup
 
@@ -110,15 +106,6 @@ Current variants include:
   ```
 
   All resulting envelopes are written to `dist/*.envelope`.
-
-* Build against a specific Toit ref (tag/branch/commit):
-
-  ``` shell
-  make init TOIT_REF=v2.0.0-alpha.190
-  make envelope VARIANT=esp32c6-standard TOIT_REF=v2.0.0-alpha.190
-  ```
-
-  This updates the checked-out `toit` submodule to the requested ref for the build.
 
 ## Makefile targets
 - `make` or `make all` - Build the default envelope variant.
