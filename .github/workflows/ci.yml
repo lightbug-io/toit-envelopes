@@ -42,8 +42,8 @@ jobs:
       - name: Build envelope
         shell: bash
         run: |
-          make init TOIT_REF=${{ matrix.toit.ref }}
-          make envelope VARIANT=${{ matrix.variant }} TOIT_REF=${{ matrix.toit.ref }}
+          make init TOIT_REF=${{ matrix.toit.ref }} TOIT_UPDATE_SUBMODULES=true
+          make envelope VARIANT=${{ matrix.variant }} TOIT_REF=${{ matrix.toit.ref }} TOIT_UPDATE_SUBMODULES=true
           cp dist/${{ matrix.variant }}.envelope dist/${{ matrix.variant }}-toit-${{ matrix.toit.label }}.envelope
 
       - name: Upload envelope artifact

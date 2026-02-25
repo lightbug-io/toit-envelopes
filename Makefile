@@ -28,6 +28,9 @@ TOIT_ROOT := $(SOURCE_DIR)/toit
 # Optional Toit ref (tag/branch/commit) to build against.
 # Example: make envelope VARIANT=esp32c6-standard TOIT_REF=v2.0.0-alpha.190
 TOIT_REF ?=
+# Set to true to update nested submodules recursively after TOIT_REF checkout.
+# This is enabled by default, since Toit ref switches usually require matching nested submodules.
+TOIT_UPDATE_SUBMODULES ?= true
 IDF_PATH := $(TOIT_ROOT)/third_party/esp-idf
 IDF_PY := $(IDF_PATH)/tools/idf.py
 
@@ -57,7 +60,18 @@ override-toit-ref:
 	  echo "Overriding Toit submodule to ref: $(TOIT_REF)"; \
 	  git -C "$(TOIT_ROOT)" fetch --tags --force --prune origin; \
 	  git -C "$(TOIT_ROOT)" checkout --detach "$(TOIT_REF)"; \
-	  git -C "$(TOIT_ROOT)" submodule update --init --recursive; \
+	  if [[ "$(TOIT_UPDATE_SUBMODULES)" == "true" ]]; then \
+	    echo "Updating Toit submodules recursively"; \
+	    git -C "$(TOIT_ROOT)" submodule sync --recursive; \
+	    if ! git -C "$(TOIT_ROOT)" submodule update --init --recursive --jobs 8; then \
+	      echo "Recursive submodule update failed; retrying after deinit/sync"; \
+	      git -C "$(TOIT_ROOT)" submodule deinit -f --all; \
+	      git -C "$(TOIT_ROOT)" submodule sync --recursive; \
+	      git -C "$(TOIT_ROOT)" submodule update --init --recursive --jobs 8; \
+	    fi; \
+	  else \
+	    echo "Keeping existing Toit submodule checkouts (TOIT_UPDATE_SUBMODULES=false)"; \
+	  fi; \
 	fi
 
 .PHONY: host
