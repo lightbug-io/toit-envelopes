@@ -25,6 +25,9 @@ BUILD_ROOT := $(SOURCE_DIR)/build-root
 BUILD_PATH := $(SOURCE_DIR)/build
 DIST_DIR := $(SOURCE_DIR)/dist
 TOIT_ROOT := $(SOURCE_DIR)/toit
+# Optional Toit ref (tag/branch/commit) to build against.
+# Example: make envelope VARIANT=esp32c6-standard TOIT_REF=v2.0.0-alpha.190
+TOIT_REF ?=
 IDF_PATH := $(TOIT_ROOT)/third_party/esp-idf
 IDF_PY := $(IDF_PATH)/tools/idf.py
 
@@ -48,15 +51,24 @@ initialize-submodules:
 		pushd toit && git submodule update --init --recursive && popd; \
 	fi
 
+.PHONY: override-toit-ref
+override-toit-ref:
+	@if [[ -n "$(TOIT_REF)" ]]; then \
+	  echo "Overriding Toit submodule to ref: $(TOIT_REF)"; \
+	  git -C "$(TOIT_ROOT)" fetch --tags --force --prune origin; \
+	  git -C "$(TOIT_ROOT)" checkout --detach "$(TOIT_REF)"; \
+	  git -C "$(TOIT_ROOT)" submodule update --init --recursive; \
+	fi
+
 .PHONY: host
-host: initialize-submodules
+host: initialize-submodules override-toit-ref
 	@$(call toit-make,build-host)
 
 .PHONY: build-host
 build-host: host
 
 .PHONY: esp32
-esp32: initialize-submodules
+esp32: initialize-submodules override-toit-ref
 	@$(MAKE) envelope VARIANT=$(VARIANT)
 
 .PHONY: list-variants
@@ -64,7 +76,7 @@ list-variants:
 	@printf "%s\n" $(VARIANTS)
 
 .PHONY: envelope
-envelope: initialize-submodules
+envelope: initialize-submodules override-toit-ref
 	@if [[ ! -f "$(BUILD_ROOT)/sdkconfig.defaults" || ! -f "$(BUILD_ROOT)/partitions.csv" ]]; then \
 	  echo "Run 'make init' first"; \
 	  exit 1; \
@@ -125,13 +137,13 @@ envelope: initialize-submodules
 	  exit $$status
 
 .PHONY: envelopes
-envelopes: initialize-submodules
+envelopes: initialize-submodules override-toit-ref
 	@for v in $(VARIANTS); do \
-	  $(MAKE) envelope VARIANT=$$v; \
+	  $(MAKE) envelope VARIANT=$$v TOIT_REF=$(TOIT_REF); \
 	done
 
 .PHONY: menuconfig
-menuconfig: initialize-submodules
+menuconfig: initialize-submodules override-toit-ref
 	@$(call toit-make,menuconfig)
 
 .PHONY: clean
@@ -139,7 +151,7 @@ clean:
 	@$(call toit-make,clean)
 
 .PHONY: init
-init: $(BUILD_ROOT)/sdkconfig.defaults $(BUILD_ROOT)/partitions.csv
+init: initialize-submodules override-toit-ref $(BUILD_ROOT)/sdkconfig.defaults $(BUILD_ROOT)/partitions.csv
 
 $(BUILD_ROOT)/sdkconfig.defaults: initialize-submodules
 	@cp $(TOIT_ROOT)/toolchains/$(IDF_TARGET)/sdkconfig.defaults $@
