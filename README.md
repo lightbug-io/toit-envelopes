@@ -73,17 +73,30 @@ checked into your repository.
 * Adjust the [ci.yml](.github/workflows/ci.yml) file to match your setup. Typically, you don't need
   to compile on Windows or macOS.
 
+This repository supports per-variant overrides:
+
+* `variants/<name>/partitions.csv` (optional) - partition table override for a variant.
+* `variants/<name>/sdkconfig.defaults` (optional) - extra sdkconfig lines appended to the target defaults.
+* `variants/<name>/idf_target` (optional) - ESP-IDF target for this variant (for example `esp32s3`).
+
 ### Build
 This repository is set up to build multiple envelope variants.
+
+Current variants include:
+
+* `esp32c6-standard`
+* `esp32c6-large-partitions`
+* `esp32c6-single-ota`
+* `esp32s3-no-spram` (ESP32-S3 variant with SPIRAM disabled to avoid SPIRAM attempts and pin usage)
 
 * Build one envelope variant:
 
   ``` shell
   make init
-  make envelope VARIANT=esp32c6-standard
+  make envelope VARIANT=esp32s3-no-spram
   ```
 
-  The resulting envelope is written to `dist/esp32c6-standard.envelope`.
+  The resulting envelope is written to `dist/<variant>.envelope`.
 
 * Build all variants:
 

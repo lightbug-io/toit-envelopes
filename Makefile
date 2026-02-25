@@ -12,7 +12,7 @@ IDF_TARGET := esp32c6
 
 # Envelope variants.
 VARIANT ?= esp32c6-standard
-VARIANTS ?= esp32c6-standard esp32c6-large-partitions esp32c6-single-ota
+VARIANTS ?= esp32c6-standard esp32c6-large-partitions esp32c6-single-ota esp32s3-no-spram
 
 # Set to false to avoid initializing submodules at every build.
 INITIALIZE_SUBMODULES := true
@@ -69,30 +69,59 @@ envelope: initialize-submodules
 	  echo "Run 'make init' first"; \
 	  exit 1; \
 	fi
-	@if [[ ! -f "$(SOURCE_DIR)/variants/$(VARIANT)/partitions.csv" ]]; then \
+	@if [[ ! -d "$(SOURCE_DIR)/variants/$(VARIANT)" ]]; then \
 	  echo "Unknown VARIANT: $(VARIANT)"; \
 	  echo "Known variants:"; \
 	  $(MAKE) list-variants; \
 	  exit 1; \
 	fi
 	@mkdir -p "$(DIST_DIR)"
-	@tmp_part=$$(mktemp); \
+	@variant_dir="$(SOURCE_DIR)/variants/$(VARIANT)"; \
+	  variant_target="$(IDF_TARGET)"; \
+	  if [[ -f "$$variant_dir/idf_target" ]]; then \
+	    variant_target="$$(<"$$variant_dir/idf_target")"; \
+	  fi; \
+	  if [[ ! -f "$(TOIT_ROOT)/toolchains/$$variant_target/partitions.csv" || ! -f "$(TOIT_ROOT)/toolchains/$$variant_target/sdkconfig.defaults" ]]; then \
+	    echo "Unknown IDF target for variant '$(VARIANT)': $$variant_target"; \
+	    exit 1; \
+	  fi; \
+	  tmp_part=$$(mktemp); \
+	  tmp_sdk=$$(mktemp); \
+	  tmp_sdkconfig=""; \
 	  cp "$(BUILD_ROOT)/partitions.csv" "$$tmp_part"; \
-	  cp "$(SOURCE_DIR)/variants/$(VARIANT)/partitions.csv" "$(BUILD_ROOT)/partitions.csv"; \
+	  cp "$(BUILD_ROOT)/sdkconfig.defaults" "$$tmp_sdk"; \
+	  if [[ -f "$(BUILD_ROOT)/sdkconfig" ]]; then \
+	    tmp_sdkconfig=$$(mktemp); \
+	    cp "$(BUILD_ROOT)/sdkconfig" "$$tmp_sdkconfig"; \
+	  fi; \
+	  rm -f "$(BUILD_ROOT)/sdkconfig"; \
+	  cp "$(TOIT_ROOT)/toolchains/$$variant_target/partitions.csv" "$(BUILD_ROOT)/partitions.csv"; \
+	  cp "$(TOIT_ROOT)/toolchains/$$variant_target/sdkconfig.defaults" "$(BUILD_ROOT)/sdkconfig.defaults"; \
+	  if [[ -f "$$variant_dir/partitions.csv" ]]; then \
+	    cp "$$variant_dir/partitions.csv" "$(BUILD_ROOT)/partitions.csv"; \
+	  fi; \
+	  if [[ -f "$$variant_dir/sdkconfig.defaults" ]]; then \
+	    printf "\n# Variant override: $(VARIANT)\n" >> "$(BUILD_ROOT)/sdkconfig.defaults"; \
+	    cat "$$variant_dir/sdkconfig.defaults" >> "$(BUILD_ROOT)/sdkconfig.defaults"; \
+	  fi; \
 	  $(MAKE) -C "$(BUILD_ROOT)" \
 	    COMPONENTS=$(COMPONENTS) \
 	    BUILD_PATH=$(BUILD_PATH)/variants/$(VARIANT) \
 	    BASE_BUILD_PATH=$(BUILD_PATH) \
 	    TOIT_ROOT=$(TOIT_ROOT) \
-	    IDF_TARGET=$(IDF_TARGET) \
+	    IDF_TARGET=$$variant_target \
 	    IDF_PATH=$(IDF_PATH) \
 	    IDF_PY=$(IDF_PY) \
 	    esp32; \
 	  status=$$?; \
 	  if [[ $$status -eq 0 ]]; then \
-	    cp "$(BUILD_PATH)/variants/$(VARIANT)/$(IDF_TARGET)/firmware.envelope" "$(DIST_DIR)/$(VARIANT).envelope"; \
+	    cp "$(BUILD_PATH)/variants/$(VARIANT)/$$variant_target/firmware.envelope" "$(DIST_DIR)/$(VARIANT).envelope"; \
 	  fi; \
 	  mv "$$tmp_part" "$(BUILD_ROOT)/partitions.csv"; \
+	  mv "$$tmp_sdk" "$(BUILD_ROOT)/sdkconfig.defaults"; \
+	  if [[ -n "$$tmp_sdkconfig" ]]; then \
+	    mv "$$tmp_sdkconfig" "$(BUILD_ROOT)/sdkconfig"; \
+	  fi; \
 	  exit $$status
 
 .PHONY: envelopes

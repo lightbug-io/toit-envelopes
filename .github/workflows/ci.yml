@@ -18,6 +18,7 @@ jobs:
           - esp32c6-standard
           - esp32c6-large-partitions
           - esp32c6-single-ota
+          - esp32s3-no-spram
 
     runs-on: ubuntu-latest
 

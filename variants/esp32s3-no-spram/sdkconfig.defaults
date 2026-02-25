@@ -1,0 +1,3 @@
+# Disable PSRAM/SPIRAM for this variant to avoid PSRAM pin restrictions.
+# This is the canonical defconfig form for CONFIG_SPIRAM=n.
+# CONFIG_SPIRAM is not set
