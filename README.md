@@ -7,8 +7,12 @@ for [Toit](https://toitlang.org/) use with Lightbug devices, and is based on [th
 
 You can find released envelopes under the Github releases page: https://github.com/lightbug-io/toit-envelopes/releases
 
-Tags should have the format "v2.0.0-alpha.189.lb.yyymmdd".
-In the case that multiple releases are made on the same day, the "yyyymmdd" part can be extended with a suffix, e.g. "yyyymmdd-1", "yyyymmdd-2", etc.
+Tags are release-centric and use the format `lb.YYYYMMDD-N`, for example
+`lb.20260819-1`. A release can therefore include envelopes built with more
+than one Toit version. Public asset names are short and versioned, for example
+`esp32c6-single-ota.191.envelope` and `esp32c6-single-ota.198.envelope`.
+[`firmware-profiles.json`](firmware-profiles.json) records the exact Toit tag
+and internal build variant for each asset.
 
 ## Setup
 
@@ -87,6 +91,8 @@ Current variants include:
 * `esp32c6-standard`
 * `esp32c6-large-partitions`
 * `esp32c6-single-ota`
+* `esp32c6-usb-serial-jtag` (ESP32-C6 native USB Serial/JTAG is the primary
+  ESP-IDF console, so Toit `io.stdin` reads from the USB CDC port)
 * `esp32s3-no-spram` (ESP32-S3 variant with SPIRAM disabled to avoid SPIRAM attempts and pin usage)
 
 * Build one envelope variant:
@@ -106,6 +112,16 @@ Current variants include:
   ```
 
   All resulting envelopes are written to `dist/*.envelope`.
+
+* Build a public release asset locally without switching the `toit` submodule:
+
+  ``` shell
+  ./scripts/build-envelope.sh esp32c6-single-ota.198.envelope
+  ```
+
+  The script reads `firmware-profiles.json`, keeps a separate cached Toit
+  checkout for each SDK under `.cache/toit`, and writes the named asset to
+  `dist/`.
 
 ## Makefile targets
 - `make` or `make all` - Build the default envelope variant.

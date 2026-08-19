@@ -12,7 +12,7 @@ IDF_TARGET := esp32c6
 
 # Envelope variants.
 VARIANT ?= esp32c6-standard
-VARIANTS ?= esp32c6-standard esp32c6-large-partitions esp32c6-single-ota esp32s3-no-spram
+VARIANTS ?= esp32c6-standard esp32c6-large-partitions esp32c6-single-ota esp32c6-usb-serial-jtag esp32s3-no-spram
 
 # Set to false to avoid initializing submodules at every build.
 INITIALIZE_SUBMODULES := true
@@ -22,9 +22,9 @@ COMPONENTS := $(SOURCE_DIR)/components
 
 # Constants that typically don't need to be changed.
 BUILD_ROOT := $(SOURCE_DIR)/build-root
-BUILD_PATH := $(SOURCE_DIR)/build
-DIST_DIR := $(SOURCE_DIR)/dist
-TOIT_ROOT := $(SOURCE_DIR)/toit
+BUILD_PATH ?= $(SOURCE_DIR)/build
+DIST_DIR ?= $(SOURCE_DIR)/dist
+TOIT_ROOT ?= $(SOURCE_DIR)/toit
 IDF_PATH := $(TOIT_ROOT)/third_party/esp-idf
 IDF_PY := $(IDF_PATH)/tools/idf.py
 
@@ -44,8 +44,8 @@ endef
 .PHONY: initialize-submodules
 initialize-submodules:
 	@if [[ "$(INITIALIZE_SUBMODULES)" == "true" ]]; then \
-	  echo "Initializing submodules"; \
-		pushd toit && git submodule update --init --recursive && popd; \
+	  echo "Initializing submodules in $(TOIT_ROOT)"; \
+		git -C "$(TOIT_ROOT)" submodule update --init --recursive; \
 	fi
 
 .PHONY: host

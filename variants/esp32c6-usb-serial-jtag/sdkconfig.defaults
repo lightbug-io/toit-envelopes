@@ -1,0 +1,12 @@
+# Make the ESP32-C6 native USB Serial/JTAG controller the primary console.
+# This routes ESP-IDF stdin (and therefore Toit io.stdin) through the CDC/ACM
+# port exposed by the board's USB connector. The stock configuration uses
+# UART0 as primary and mirrors output to USB Serial/JTAG, which is output-only.
+#
+# Do not set ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED directly: ESP-IDF derives it
+# from the selected primary console.
+# CONFIG_ESP_CONSOLE_UART_DEFAULT is not set
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+# CONFIG_ESP_CONSOLE_UART_CUSTOM is not set
+# CONFIG_ESP_CONSOLE_NONE is not set
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y

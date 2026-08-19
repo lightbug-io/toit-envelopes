@@ -1,0 +1,29 @@
+{
+  "envelopes": [
+    {
+      "toit_ref": "v2.0.0-alpha.191",
+      "variant": "esp32c6-standard",
+      "asset": "esp32c6-standard.191.envelope"
+    },
+    {
+      "toit_ref": "v2.0.0-alpha.191",
+      "variant": "esp32c6-large-partitions",
+      "asset": "esp32c6-large-partitions.191.envelope"
+    },
+    {
+      "toit_ref": "v2.0.0-alpha.191",
+      "variant": "esp32c6-single-ota",
+      "asset": "esp32c6-single-ota.191.envelope"
+    },
+    {
+      "toit_ref": "v2.0.0-alpha.191",
+      "variant": "esp32s3-no-spram",
+      "asset": "esp32s3-no-spram.191.envelope"
+    },
+    {
+      "toit_ref": "v2.0.0-alpha.198",
+      "variant": "esp32c6-usb-serial-jtag",
+      "asset": "esp32c6-single-ota.198.envelope"
+    }
+  ]
+}

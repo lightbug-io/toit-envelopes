@@ -9,23 +9,41 @@ on:
   push
 
 jobs:
+  prepare-matrix:
+    name: Prepare envelope matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: matrix
+        run: echo "matrix=$(jq -c '.envelopes' firmware-profiles.json)" >> "$GITHUB_OUTPUT"
+
   build:
+    name: ${{ matrix.asset }}
+    needs: prepare-matrix
     permissions:
       contents: write
     strategy:
       matrix:
-        variant:
-          - esp32c6-standard
-          - esp32c6-large-partitions
-          - esp32c6-single-ota
-          - esp32s3-no-spram
+        include: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
 
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v6
         with:
-          submodules: recursive
+          submodules: false
+
+      # Select the SDK before loading its setup action. Each matrix job has an
+      # isolated checkout, so this does not affect the pinned default submodule.
+      - name: Select Toit SDK
+        shell: bash
+        run: |
+          git submodule update --init toit
+          git -C toit fetch --depth=1 origin "refs/tags/${{ matrix.toit_ref }}:refs/tags/${{ matrix.toit_ref }}"
+          git -C toit checkout --detach "${{ matrix.toit_ref }}"
+          git -C toit submodule update --init --recursive --depth=1
 
       - name: Set up Toit build environment
         uses: ./toit/actions/setup-build
@@ -38,16 +56,30 @@ jobs:
         run: |
           make init
           make envelope VARIANT=${{ matrix.variant }}
+          cp dist/${{ matrix.variant }}.envelope dist/${{ matrix.asset }}
 
       - name: Upload envelope artifact
         uses: actions/upload-artifact@v4
         with:
-          name: envelope-${{ matrix.variant }}.envelope
-          path: dist/${{ matrix.variant }}.envelope
+          name: envelope-${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
 
-      - name: Publish GitHub release asset
-        if: github.ref_type == 'tag'
+  release:
+    name: Publish release assets
+    needs: [prepare-matrix, build]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+      - name: Publish GitHub release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/${{ matrix.variant }}.envelope
+            dist/*.envelope
+            firmware-profiles.json
