@@ -63,7 +63,12 @@ jobs:
           EXPERIMENTAL: ${{ matrix.experimental == true }}
         run: |
           git submodule update --init toit
-          git -C toit fetch --depth=1 "https://github.com/${TOIT_REPOSITORY}.git" "$TOIT_REF"
+          # Toit's version calculation needs the selected commit's ancestry.
+          FETCH_OPTIONS=(--tags)
+          if [ "$(git -C toit rev-parse --is-shallow-repository)" = true ]; then
+            FETCH_OPTIONS+=(--unshallow)
+          fi
+          git -C toit fetch "${FETCH_OPTIONS[@]}" "https://github.com/${TOIT_REPOSITORY}.git" "$TOIT_REF"
           git -C toit checkout --detach FETCH_HEAD
           git -C toit submodule update --init --recursive --depth=1 -- third_party/esp-idf
           if [ "$EXPERIMENTAL" = true ]; then

@@ -53,7 +53,11 @@ if [[ ! -d "${TOIT_ROOT}/.git" ]]; then
     "https://github.com/${TOIT_REPOSITORY}.git" "${TOIT_ROOT}"
 fi
 
-env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git -C "${TOIT_ROOT}" fetch --depth=1 origin \
+FETCH_OPTIONS=(--tags)
+if [[ "$(git -C "${TOIT_ROOT}" rev-parse --is-shallow-repository)" == true ]]; then
+  FETCH_OPTIONS+=(--unshallow)
+fi
+env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git -C "${TOIT_ROOT}" fetch "${FETCH_OPTIONS[@]}" origin \
   "${TOIT_REF}"
 env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git -C "${TOIT_ROOT}" checkout --detach FETCH_HEAD
 IDF_SUBMODULES=(third_party/esp-idf)
