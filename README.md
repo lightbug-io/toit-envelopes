@@ -142,8 +142,9 @@ second slot for fail-safe OTA. The rest of flash is unused.
 The release includes `alpha.esp32s31-single-ota-4mb.envelope`,
 `alpha.esp32s31-sdk-linux-x64.tar.gz` (matching Linux x64 SDK including S31
 esptool), `alpha.esp32s31-build.json` (pinned source metadata), and
-`alpha.esp32s31-SHA256SUMS`. Pass the release tag to the
-**Build experimental S31 base** workflow in `lightbug-io/toit-lightbug`.
+`alpha.esp32s31-SHA256SUMS`. The S31 profile in
+`lightbug-io/toit-lightbug` pins release `lb.20261117-1`; publish that envelope
+release first, then use the normal `toit-lightbug` build/release workflow.
 Downloads are public and require no extra token. Do not pair this envelope
 with a released alpha.198 SDK.
 
