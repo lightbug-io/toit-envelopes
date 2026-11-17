@@ -41,6 +41,7 @@ define call-cmake
 		"IDF_CCACHE_ENABLE=1" \
 		"TOIT_EXTRA_COMPONENTS=$(COMPONENTS)" \
 		"TOIT_SDK_DIR=$(SDK_PATH)" \
+		"TOIT_ROOT=$(TOIT_ROOT)" \
 		python $(IDF_PY) -B "$(IDF_BUILD_PATH)" $(1)
 endef
 
@@ -49,8 +50,8 @@ all: esp32
 
 .PHONY: check-env
 check-env:
-	@$(MAKE) -C "$(TOIT_ROOT)" check-env
-	@$(MAKE) -C "$(TOIT_ROOT)" check-esp32-env
+	@$(MAKE) -C "$(TOIT_ROOT)" check-env ESP32_CHIP=$(IDF_TARGET) IDF_PATH="$(IDF_PATH)"
+	@$(MAKE) -C "$(TOIT_ROOT)" check-esp32-env ESP32_CHIP=$(IDF_TARGET) IDF_PATH="$(IDF_PATH)"
 
 .PHONY: check-windows
 check-windows:
@@ -67,10 +68,11 @@ check-windows:
 
 .PHONY: esp32
 esp32: $(SDK_PATH)/bin/toit$(EXE_SUFFIX) check-windows
-	@if [ "$(shell command -v xtensa-esp32-elf-g++)" = "" ]; then \
-		source '$(IDF_PATH)/export.sh'; \
-	fi; \
-	$(MAKE) esp32-no-env
+	@if [ -x "$(TOIT_ROOT)/tools/with-idf.sh" ]; then \
+		"$(TOIT_ROOT)/tools/with-idf.sh" "$(IDF_PATH)" $(MAKE) esp32-no-env; \
+	else \
+		source "$(IDF_PATH)/export.sh" && $(MAKE) esp32-no-env; \
+	fi
 
 .PHONY: esp32-no-env
 esp32-no-env: check-env check-windows
@@ -87,8 +89,11 @@ $(SDK_PATH)/bin/toit$(EXE_SUFFIX): build-host
 
 .PHONY: menuconfig
 menuconfig:
-	@if [ "$(shell command -v xtensa-esp32-elf-g++)" = "" ]; then source '$(IDF_PATH)/export.sh'; fi; \
-	$(MAKE) menuconfig-no-env
+	@if [ -x "$(TOIT_ROOT)/tools/with-idf.sh" ]; then \
+		"$(TOIT_ROOT)/tools/with-idf.sh" "$(IDF_PATH)" $(MAKE) menuconfig-no-env; \
+	else \
+		source "$(IDF_PATH)/export.sh" && $(MAKE) menuconfig-no-env; \
+	fi
 
 .PHONY: menuconfig-no-env
 menuconfig-no-env: check-env

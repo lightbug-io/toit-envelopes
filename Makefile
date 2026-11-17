@@ -6,13 +6,13 @@ SOURCE_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 SHELL := bash
 .SHELLFLAGS += -e
 
-# Change to your configuration. See toit/toolchains for the available targets.
-# Then run 'make init'.
-IDF_TARGET := esp32c6
-
 # Envelope variants.
 VARIANT ?= esp32c6-standard
 VARIANTS ?= esp32c6-standard esp32c6-large-partitions esp32c6-single-ota esp32c6-usb-serial-jtag esp32s3-no-spram
+
+# Experimental variants are built explicitly, not by 'make envelopes'.
+EXPERIMENTAL_VARIANTS := esp32s31-single-ota-4mb
+IDF_TARGET := $(or $(strip $(file <$(SOURCE_DIR)/variants/$(VARIANT)/idf_target)),esp32c6)
 
 # Set to false to avoid initializing submodules at every build.
 INITIALIZE_SUBMODULES := true
@@ -25,8 +25,11 @@ BUILD_ROOT := $(SOURCE_DIR)/build-root
 BUILD_PATH ?= $(SOURCE_DIR)/build
 DIST_DIR ?= $(SOURCE_DIR)/dist
 TOIT_ROOT ?= $(SOURCE_DIR)/toit
-IDF_PATH := $(TOIT_ROOT)/third_party/esp-idf
+IDF_PATH := $(TOIT_ROOT)/third_party/$(if $(filter esp32s31,$(IDF_TARGET)),esp-idf-s31,esp-idf)
 IDF_PY := $(IDF_PATH)/tools/idf.py
+ifeq ($(IDF_TARGET),esp32s31)
+export IDF_TOOLS_PATH := $(or $(TOIT_S31_IDF_TOOLS_PATH),$(HOME)/.espressif-s31)
+endif
 
 all: envelope
 
@@ -45,7 +48,8 @@ endef
 initialize-submodules:
 	@if [[ "$(INITIALIZE_SUBMODULES)" == "true" ]]; then \
 	  echo "Initializing submodules in $(TOIT_ROOT)"; \
-		git -C "$(TOIT_ROOT)" submodule update --init --recursive; \
+		git -C "$(TOIT_ROOT)" submodule update --init --recursive -- \
+		  third_party/esp-idf $(if $(filter esp32s31,$(IDF_TARGET)),third_party/esp-idf-s31); \
 	fi
 
 .PHONY: host
@@ -61,7 +65,7 @@ esp32: initialize-submodules
 
 .PHONY: list-variants
 list-variants:
-	@printf "%s\n" $(VARIANTS)
+	@printf "%s\n" $(VARIANTS) $(EXPERIMENTAL_VARIANTS)
 
 .PHONY: envelope
 envelope: initialize-submodules
@@ -94,6 +98,16 @@ envelope: initialize-submodules
 	    tmp_sdkconfig=$$(mktemp); \
 	    cp "$(BUILD_ROOT)/sdkconfig" "$$tmp_sdkconfig"; \
 	  fi; \
+	  restore_config() { \
+	    mv "$$tmp_part" "$(BUILD_ROOT)/partitions.csv"; \
+	    mv "$$tmp_sdk" "$(BUILD_ROOT)/sdkconfig.defaults"; \
+	    if [[ -n "$$tmp_sdkconfig" ]]; then \
+	      mv "$$tmp_sdkconfig" "$(BUILD_ROOT)/sdkconfig"; \
+	    else \
+	      rm -f "$(BUILD_ROOT)/sdkconfig"; \
+	    fi; \
+	  }; \
+	  trap restore_config EXIT; \
 	  rm -f "$(BUILD_ROOT)/sdkconfig"; \
 	  cp "$(TOIT_ROOT)/toolchains/$$variant_target/partitions.csv" "$(BUILD_ROOT)/partitions.csv"; \
 	  cp "$(TOIT_ROOT)/toolchains/$$variant_target/sdkconfig.defaults" "$(BUILD_ROOT)/sdkconfig.defaults"; \
@@ -113,16 +127,7 @@ envelope: initialize-submodules
 	    IDF_PATH=$(IDF_PATH) \
 	    IDF_PY=$(IDF_PY) \
 	    esp32; \
-	  status=$$?; \
-	  if [[ $$status -eq 0 ]]; then \
-	    cp "$(BUILD_PATH)/variants/$(VARIANT)/$$variant_target/firmware.envelope" "$(DIST_DIR)/$(VARIANT).envelope"; \
-	  fi; \
-	  mv "$$tmp_part" "$(BUILD_ROOT)/partitions.csv"; \
-	  mv "$$tmp_sdk" "$(BUILD_ROOT)/sdkconfig.defaults"; \
-	  if [[ -n "$$tmp_sdkconfig" ]]; then \
-	    mv "$$tmp_sdkconfig" "$(BUILD_ROOT)/sdkconfig"; \
-	  fi; \
-	  exit $$status
+	  cp "$(BUILD_PATH)/variants/$(VARIANT)/$$variant_target/firmware.envelope" "$(DIST_DIR)/$(VARIANT).envelope"
 
 .PHONY: envelopes
 envelopes: initialize-submodules

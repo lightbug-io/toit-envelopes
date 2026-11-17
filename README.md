@@ -123,6 +123,36 @@ Current variants include:
   checkout for each SDK under `.cache/toit`, and writes the named asset to
   `dist/`.
 
+### Experimental ESP32-S31
+
+Manually run the **Build** workflow with `profile: s31`. Normal pushes and
+tagged releases still build only the released profiles. The experimental
+profile pins `addshore/toit` at the S31 support commit recorded in
+[`firmware-profiles.json`](firmware-profiles.json), pending
+[upstream support](https://github.com/toitlang/toit/issues/3283).
+
+`esp32s31-single-ota-4mb` targets the ESP32-S31-WROOM-3-N16R16V: PSRAM remains
+enabled, but only the first 4 MiB of its 16 MiB flash is configured. Its
+single-OTA-slot partition sizes match the C6 single-OTA layout; there is no
+second slot for fail-safe OTA. The rest of flash is unused.
+
+The run uploads `envelope-esp32s31-single-ota-4mb.s31.envelope`, containing the
+envelope, matching Linux x64 SDK (including S31 esptool), pinned source metadata,
+and SHA-256 checksums. Pass this run's ID to the **Build experimental S31 base**
+workflow in `lightbug-io/toit-lightbug`. Do not pair this envelope with a released
+alpha.198 SDK.
+
+For local builds, install the pinned SDK's IDF 5 tools and run
+`tools/setup-idf-s31.sh --install` in that SDK checkout for its separate IDF 6
+tools, then:
+
+```shell
+./scripts/build-envelope.sh esp32s31-single-ota-4mb.s31.envelope
+```
+
+The cached checkout is under `.cache/toit/addshore_toit/<toit_ref>`. Both IDF
+versions are needed: IDF 5 supplies host SDK dependencies, IDF 6 builds S31.
+
 ## Makefile targets
 - `make` or `make all` - Build the default envelope variant.
 - `make init` - Initialize after cloning. See the Setup section above.

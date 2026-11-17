@@ -6,7 +6,14 @@
 name: Build
 
 on:
-  push
+  push:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Envelope profiles to build
+        type: choice
+        options: [released, s31]
+        default: released
 
 jobs:
   prepare-matrix:
@@ -17,7 +24,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - id: matrix
-        run: echo "matrix=$(jq -c '.envelopes' firmware-profiles.json)" >> "$GITHUB_OUTPUT"
+        env:
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          if [ "$PROFILE" = s31 ]; then
+            MATRIX=$(jq -c '.experimental_envelopes' firmware-profiles.json)
+          else
+            MATRIX=$(jq -c '.envelopes' firmware-profiles.json)
+          fi
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
   build:
     name: ${{ matrix.asset }}
@@ -39,11 +54,18 @@ jobs:
       # isolated checkout, so this does not affect the pinned default submodule.
       - name: Select Toit SDK
         shell: bash
+        env:
+          TOIT_REPOSITORY: ${{ matrix.toit_repository || 'toitlang/toit' }}
+          TOIT_REF: ${{ matrix.toit_ref }}
+          EXPERIMENTAL: ${{ matrix.experimental == true }}
         run: |
           git submodule update --init toit
-          git -C toit fetch --depth=1 origin "refs/tags/${{ matrix.toit_ref }}:refs/tags/${{ matrix.toit_ref }}"
-          git -C toit checkout --detach "${{ matrix.toit_ref }}"
-          git -C toit submodule update --init --recursive --depth=1
+          git -C toit fetch --depth=1 "https://github.com/${TOIT_REPOSITORY}.git" "$TOIT_REF"
+          git -C toit checkout --detach FETCH_HEAD
+          git -C toit submodule update --init --recursive --depth=1 -- third_party/esp-idf
+          if [ "$EXPERIMENTAL" = true ]; then
+            git -C toit submodule update --init --recursive --depth=1 -- third_party/esp-idf-s31
+          fi
 
       - name: Set up Toit build environment
         uses: ./toit/actions/setup-build
@@ -51,23 +73,46 @@ jobs:
           toit-dir: toit
           esp32: true
 
+      - name: Set up experimental S31 toolchain
+        if: matrix.experimental == true
+        run: toit/tools/setup-idf-s31.sh --install
+
       - name: Build envelope
         shell: bash
         run: |
-          make init
+          make init VARIANT=${{ matrix.variant }}
           make envelope VARIANT=${{ matrix.variant }}
           cp dist/${{ matrix.variant }}.envelope dist/${{ matrix.asset }}
+
+      - name: Package matching experimental SDK
+        if: matrix.experimental == true
+        env:
+          ASSET: ${{ matrix.asset }}
+        run: |
+          make -C toit install-esptool BUILD="$GITHUB_WORKSPACE/build"
+          # The build-tree SDK symlinks its standard library into the checkout.
+          tar --dereference -czf dist/toit-sdk-s31-linux-x64.tar.gz -C build/host sdk
+          jq --arg asset "$ASSET" \
+            '.experimental_envelopes[] | select(.asset == $asset)' \
+            firmware-profiles.json > dist/s31-build.json
+          cd dist
+          sha256sum "$ASSET" toit-sdk-s31-linux-x64.tar.gz s31-build.json > SHA256SUMS
 
       - name: Upload envelope artifact
         uses: actions/upload-artifact@v4
         with:
           name: envelope-${{ matrix.asset }}
-          path: dist/${{ matrix.asset }}
+          path: |
+            dist/${{ matrix.asset }}
+            dist/toit-sdk-s31-linux-x64.tar.gz
+            dist/s31-build.json
+            dist/SHA256SUMS
+          if-no-files-found: error
 
   release:
     name: Publish release assets
     needs: [prepare-matrix, build]
-    if: github.ref_type == 'tag'
+    if: github.ref_type == 'tag' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write

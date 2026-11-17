@@ -31,33 +31,41 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 ASSET="$1"
-PROFILE="$(jq -ce --arg asset "${ASSET}" '.envelopes[] | select(.asset == $asset)' "${PROFILE_FILE}")" || {
+PROFILE="$(jq -ce --arg asset "${ASSET}" '(.envelopes + (.experimental_envelopes // []))[] | select(.asset == $asset)' "${PROFILE_FILE}")" || {
   echo "Unknown envelope asset: ${ASSET}" >&2
-  jq -r '.envelopes[].asset' "${PROFILE_FILE}" >&2
+  jq -r '(.envelopes + (.experimental_envelopes // []))[].asset' "${PROFILE_FILE}" >&2
   exit 1
 }
 
 TOIT_REF="$(jq -r '.toit_ref' <<<"${PROFILE}")"
+TOIT_REPOSITORY="$(jq -r '.toit_repository // "toitlang/toit"' <<<"${PROFILE}")"
 VARIANT="$(jq -r '.variant' <<<"${PROFILE}")"
 SAFE_REF="${TOIT_REF//\//_}"
-TOIT_ROOT="${SOURCE_DIR}/.cache/toit/${SAFE_REF}"
-BUILD_PATH="${SOURCE_DIR}/build/sdk-${SAFE_REF}"
+SAFE_REPOSITORY="${TOIT_REPOSITORY//\//_}"
+TOIT_ROOT="${SOURCE_DIR}/.cache/toit/${SAFE_REPOSITORY}/${SAFE_REF}"
+BUILD_PATH="${SOURCE_DIR}/build/sdk-${SAFE_REPOSITORY}-${SAFE_REF}"
 
-mkdir -p "${SOURCE_DIR}/.cache/toit"
+mkdir -p "$(dirname "${TOIT_ROOT}")"
 if [[ ! -d "${TOIT_ROOT}/.git" ]]; then
   # Some developer machines rewrite GitHub HTTPS URLs to SSH globally. Builds
   # must remain usable without a GitHub SSH key, so deliberately use HTTPS.
   env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git clone --no-checkout \
-    https://github.com/toitlang/toit.git "${TOIT_ROOT}"
-  git -C "${TOIT_ROOT}" remote set-url origin https://github.com/toitlang/toit.git
+    "https://github.com/${TOIT_REPOSITORY}.git" "${TOIT_ROOT}"
 fi
 
 env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git -C "${TOIT_ROOT}" fetch --depth=1 origin \
-  "refs/tags/${TOIT_REF}:refs/tags/${TOIT_REF}"
-env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git -C "${TOIT_ROOT}" checkout --detach "${TOIT_REF}"
-env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git -C "${TOIT_ROOT}" submodule update --init --recursive --depth=1
+  "${TOIT_REF}"
+env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git -C "${TOIT_ROOT}" checkout --detach FETCH_HEAD
+IDF_SUBMODULES=(third_party/esp-idf)
+if [[ -f "${SOURCE_DIR}/variants/${VARIANT}/idf_target" ]] &&
+   [[ "$(<"${SOURCE_DIR}/variants/${VARIANT}/idf_target")" == esp32s31 ]]; then
+  IDF_SUBMODULES+=(third_party/esp-idf-s31)
+fi
+env GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git -C "${TOIT_ROOT}" submodule update \
+  --init --recursive --depth=1 -- "${IDF_SUBMODULES[@]}"
 
 make -C "${SOURCE_DIR}" init \
+  VARIANT="${VARIANT}" \
   TOIT_ROOT="${TOIT_ROOT}" \
   INITIALIZE_SUBMODULES=false
 make -C "${SOURCE_DIR}" envelope \
