@@ -26,9 +26,12 @@ jobs:
       - id: matrix
         env:
           PROFILE: ${{ inputs.profile }}
+          REF_TYPE: ${{ github.ref_type }}
         run: |
           if [ "$PROFILE" = s31 ]; then
             MATRIX=$(jq -c '.experimental_envelopes' firmware-profiles.json)
+          elif [ "$REF_TYPE" = tag ]; then
+            MATRIX=$(jq -c '.envelopes + .experimental_envelopes' firmware-profiles.json)
           else
             MATRIX=$(jq -c '.envelopes' firmware-profiles.json)
           fi
@@ -91,12 +94,12 @@ jobs:
         run: |
           make -C toit install-esptool BUILD="$GITHUB_WORKSPACE/build"
           # The build-tree SDK symlinks its standard library into the checkout.
-          tar --dereference -czf dist/toit-sdk-s31-linux-x64.tar.gz -C build/host sdk
+          tar --dereference -czf dist/alpha.esp32s31-sdk-linux-x64.tar.gz -C build/host sdk
           jq --arg asset "$ASSET" \
             '.experimental_envelopes[] | select(.asset == $asset)' \
-            firmware-profiles.json > dist/s31-build.json
+            firmware-profiles.json > dist/alpha.esp32s31-build.json
           cd dist
-          sha256sum "$ASSET" toit-sdk-s31-linux-x64.tar.gz s31-build.json > SHA256SUMS
+          sha256sum "$ASSET" alpha.esp32s31-sdk-linux-x64.tar.gz alpha.esp32s31-build.json > alpha.esp32s31-SHA256SUMS
 
       - name: Upload envelope artifact
         uses: actions/upload-artifact@v4
@@ -104,9 +107,9 @@ jobs:
           name: envelope-${{ matrix.asset }}
           path: |
             dist/${{ matrix.asset }}
-            dist/toit-sdk-s31-linux-x64.tar.gz
-            dist/s31-build.json
-            dist/SHA256SUMS
+            dist/alpha.esp32s31-sdk-linux-x64.tar.gz
+            dist/alpha.esp32s31-build.json
+            dist/alpha.esp32s31-SHA256SUMS
           if-no-files-found: error
 
   release:
@@ -127,4 +130,5 @@ jobs:
         with:
           files: |
             dist/*.envelope
+            dist/alpha.esp32s31-*
             firmware-profiles.json

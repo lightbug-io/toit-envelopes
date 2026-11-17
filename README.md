@@ -125,8 +125,11 @@ Current variants include:
 
 ### Experimental ESP32-S31
 
-Manually run the **Build** workflow with `profile: s31`. Normal pushes and
-tagged releases still build only the released profiles. The experimental
+Normal tagged releases include S31 assets named `alpha.esp32s31-*` alongside
+the existing C6/S3 assets. The release itself is not a prerelease; the `alpha`
+asset names identify the experimental target. Branch pushes still build only
+the existing profiles. To build just S31 without publishing, manually run the
+**Build** workflow with `profile: s31`. The experimental
 profile pins `addshore/toit` at the S31 support commit recorded in
 [`firmware-profiles.json`](firmware-profiles.json), pending
 [upstream support](https://github.com/toitlang/toit/issues/3283).
@@ -136,18 +139,20 @@ enabled, but only the first 4 MiB of its 16 MiB flash is configured. Its
 single-OTA-slot partition sizes match the C6 single-OTA layout; there is no
 second slot for fail-safe OTA. The rest of flash is unused.
 
-The run uploads `envelope-esp32s31-single-ota-4mb.s31.envelope`, containing the
-envelope, matching Linux x64 SDK (including S31 esptool), pinned source metadata,
-and SHA-256 checksums. Pass this run's ID to the **Build experimental S31 base**
-workflow in `lightbug-io/toit-lightbug`. Do not pair this envelope with a released
-alpha.198 SDK.
+The release includes `alpha.esp32s31-single-ota-4mb.envelope`,
+`alpha.esp32s31-sdk-linux-x64.tar.gz` (matching Linux x64 SDK including S31
+esptool), `alpha.esp32s31-build.json` (pinned source metadata), and
+`alpha.esp32s31-SHA256SUMS`. Pass the release tag to the
+**Build experimental S31 base** workflow in `lightbug-io/toit-lightbug`.
+Downloads are public and require no extra token. Do not pair this envelope
+with a released alpha.198 SDK.
 
 For local builds, install the pinned SDK's IDF 5 tools and run
 `tools/setup-idf-s31.sh --install` in that SDK checkout for its separate IDF 6
 tools, then:
 
 ```shell
-./scripts/build-envelope.sh esp32s31-single-ota-4mb.s31.envelope
+./scripts/build-envelope.sh alpha.esp32s31-single-ota-4mb.envelope
 ```
 
 The cached checkout is under `.cache/toit/addshore_toit/<toit_ref>`. Both IDF

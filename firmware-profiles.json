@@ -31,7 +31,7 @@
       "toit_repository": "addshore/toit",
       "toit_ref": "3afb27a892ef30355b53c055fe9c62c0e39f7811",
       "variant": "esp32s31-single-ota-4mb",
-      "asset": "esp32s31-single-ota-4mb.s31.envelope",
+      "asset": "alpha.esp32s31-single-ota-4mb.envelope",
       "experimental": true
     }
   ]
